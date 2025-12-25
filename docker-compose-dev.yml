@@ -17,19 +17,35 @@ services:
   users-service:
     build: 
       context: ./services/users
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     env_file:
-      - ./services/users/.env
+      - ./services/users/.env.dev
     volumes:
       - ./services/users:/app
       - /app/node_modules
+    depends_on:
+      - postgres-users
+    networks:
+      - retail-network
+
+  postgres-users:
+    image: postgres:16-alpine
+    container_name: users_postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: users_service_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     networks:
       - retail-network
 
   inventory-service:
     build: 
       context: ./services/inventory
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     env_file:
       - ./services/inventory/.env
     volumes:
@@ -41,7 +57,7 @@ services:
   bookings-service:
     build: 
       context: ./services/bookings
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     env_file:
       - ./services/bookings/.env
     volumes:
@@ -63,3 +79,6 @@ services:
 networks:
   retail-network:
     driver: bridge
+
+volumes:
+  pgdata:
