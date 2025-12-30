@@ -140,3 +140,6 @@ vite.config.ts.timestamp-*
 
 # PowerShell scripts
 *.ps1
+
+# Vscode settings
+.vscode/
