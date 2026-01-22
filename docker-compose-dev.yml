@@ -96,6 +96,20 @@ services:
     networks:
       - retail-network
 
+  stripe-cli:
+    image: stripe/stripe-cli
+    container_name: stripe-cli
+    command: >
+      listen --forward-to http://payments-service:8080/payments/stripe/webhook
+    environment:
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_DEVICE_NAME: Stripe-Container
+    restart: unless-stopped
+    depends_on:
+      - payments-service
+    networks:
+      - retail-network
+
 networks:
   retail-network:
     driver: bridge
