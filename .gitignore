@@ -143,3 +143,5 @@ vite.config.ts.timestamp-*
 
 # Vscode settings
 .vscode/
+
+stripe_api_key.txt

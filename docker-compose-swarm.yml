@@ -1,0 +1,154 @@
+secrets:
+  stripe-api-key:
+    file: ./stripe_api_key.txt
+
+  users-env:
+    file: ./services/users/.env
+
+  jwt-private-key:
+    file: ./services/users/certs/jwt-private.pkcs8.pem
+  
+  jwt-public-key:
+    file: ./services/users/certs/jwt-public.spki.pem
+
+  inventory-env:
+    file: ./services/inventory/.env
+
+  bookings-env:
+    file: ./services/bookings/.env
+
+  payments-env:
+    file: ./services/payments/src/main/resources/application-dev.properties
+
+  email-env:
+    file: ./services/emails/.env
+  
+  reviews-env:
+    file: ./services/reviews/.env
+
+configs:
+  nginx-config:
+    file: ./api-gateway/swarm-nginx.conf
+
+services:
+  api-gateway:
+    image: nginx:latest
+    ports:
+      - "8081:8081"
+    configs: 
+      - source: nginx-config
+        target: /etc/nginx/nginx.conf
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - retail-network
+
+  users-service:
+    image: users-service:latest
+    secrets:
+      - source: users-env
+        target: /app/.env
+      - source: jwt-private-key
+        target: /app/certs/jwt-private.pkcs8.pem
+      - source: jwt-public-key
+        target: /app/certs/jwt-public.spki.pem
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - retail-network
+
+  inventory-service:
+    image: inventory-service:latest
+    secrets:
+      - source: inventory-env
+        target: /app/.env
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - retail-network
+
+  bookings-service:
+    image: bookings-service:latest
+    secrets:
+      - source: bookings-env
+        target: /app/.env
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - retail-network
+
+  payments-service:
+    image: payments-service:latest
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_CONFIG_LOCATION=/run/secrets/
+    secrets:
+      - source: payments-env
+        target: application-dev.properties
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - retail-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - retail-network
+
+  email-service:
+    image: email-service:latest
+    secrets:
+      - source: email-env
+        target: /app/.env
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - retail-network
+
+  reviews-service:
+    image: reviews-service:latest
+    secrets:
+      - source: reviews-env
+        target: /app/.env
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    networks:
+      - retail-network
+
+  stripe-cli:
+    image: stripe/stripe-cli
+    entrypoint: ["sh", "-c"]
+    command: >
+      "stripe listen
+      --api-key $$(cat /run/secrets/stripe-api-key)
+      --device-name Stripe-Container
+      --forward-to http://payments-service:8080/payments/stripe/webhook"
+    secrets:
+      - stripe-api-key
+    networks:
+      - retail-network
+
+networks:
+  retail-network:
+    driver: overlay
