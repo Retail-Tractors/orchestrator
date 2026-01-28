@@ -1,3 +1,7 @@
+secrets:
+  stripe-api-key:
+    file: ./stripe_api_key.txt
+
 services:
   api-gateway:
     image: nginx:latest
@@ -11,6 +15,7 @@ services:
       - inventory-service
       - bookings-service
       - payments-service
+      - reviews-service
     networks:
       - retail-network
 
@@ -79,17 +84,28 @@ services:
     networks:
       - retail-network
 
+  reviews-service:
+    build: 
+      context: ./services/reviews
+      dockerfile: Dockerfile.dev
+    env_file:
+      - ./services/reviews/.env
+    volumes:
+      - ./services/reviews:/app
+      - /app/node_modules
+    networks:
+      - retail-network
+
   stripe-cli:
     image: stripe/stripe-cli
-    container_name: stripe-cli
+    entrypoint: ["sh", "-c"]
     command: >
-      listen --forward-to http://payments-service:8080/payments/stripe/webhook
-    environment:
-      STRIPE_API_KEY: ${STRIPE_API_KEY}
-      STRIPE_DEVICE_NAME: Stripe-Container
-    restart: unless-stopped
-    depends_on:
-      - payments-service
+      "stripe listen
+      --api-key $$(cat /run/secrets/stripe-api-key)
+      --device-name Stripe-Container
+      --forward-to http://payments-service:8080/payments/stripe/webhook"
+    secrets:
+      - stripe-api-key
     networks:
       - retail-network
 
